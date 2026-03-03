@@ -1,6 +1,11 @@
 {
-  "m13": {
-    "share_code": "M13-TEST123",
-    "image": "m13.jpg"
+  "mp": {
+    "m13": {
+      "respawn": {
+        "code": "M13-2C4B6B8B9B",
+        "image": "https://raw.githubusercontent.com/chrisleon740/codm-loadout-bot/main/images/m13resp.jpeg",
+        "caption": "🔥 M13 Respawn Build "
+      }
+    }
   }
 }
