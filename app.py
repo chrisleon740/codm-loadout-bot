@@ -1,92 +1,114 @@
-from flask import Flask, request, jsonify, send_from_directory
-import requests
+import os
 import json
+import requests
+from flask import Flask, request, jsonify
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 
-VERIFY_TOKEN = "codmbotverify"
-ACCESS_TOKEN = "EAAUXehsXecQBQwDD6ZCxarZCZAmAZCULblCp4DCrDyzLnETJevb6WbPJrisC0ixTd95nd5lqqMnEyIykqeUQ5yM4iiLOOJiTwHYeQ5ddfveWStmZCwfprD5hzTUFI6Pc9hPpXcrNGkFTsu719LdNl0ckrQctuGhctTBOIpU8V2XfSFHFTglwZC4mrTxcU8iuDDL5ZA4b4HbkHcZAOZA3v63IowgLOFNXW40yZCRUVzRx4HHhWG52VvUIXL8kkLMO8HpeoCEyZAbw4mp5d0sxlMDvTszYOUR_ACCESS_TOKEN"
-PHONE_NUMBER_ID = "1022800870913487"
+VERIFY_TOKEN = os.getenv("codm")
+WHATSAPP_TOKEN = os.getenv("EAAUXehsXecQBQ2ejYALhVE5SpZCSvo02JOnKs9ktbm7zgzFB7PbdVwuzlOi5DZBLITRtvQLNJ7RQDjrZAoSioJIDkDZBZBYIT8JbkIrnG4oxbwWrOFLKBYwMB3ssIr49SEd2OcZBYZAydjmzKoTUZBKHdB4ZCHmfZCh3FCnauYMX2ufcYkBLKasZA3F6luCfv3uDAwUPMpoZBgcu8OPQAVZCVCUBZBJfPrmYe6ZBo47sfRbuaznxQHbdW8H5EoAmFiHb6A1h8ldwZCalZARfoVwp5Ktv2q1n6")
+PHONE_NUMBER_ID = os.getenv("1022800870913487")
 
+# Load build database
 with open("builds.json") as f:
     builds = json.load(f)
 
+
+def get_build(command):
+    try:
+        parts = command.lower().split()
+
+        if len(parts) < 3:
+            return None
+
+        category = parts[0].replace("!", "")
+        weapon = parts[1]
+        mode = parts[2].replace("-", "")
+
+        return builds[category][weapon][mode]
+    except:
+        return None
+
+
+def send_message(to, text, image_url=None):
+    url = f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages"
+
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    if image_url:
+        data = {
+            "messaging_product": "whatsapp",
+            "to": to,
+            "type": "image",
+            "image": {
+                "link": image_url,
+                "caption": text
+            }
+        }
+    else:
+        data = {
+            "messaging_product": "whatsapp",
+            "to": to,
+            "type": "text",
+            "text": {"body": text}
+        }
+
+    response = requests.post(url, headers=headers, json=data)
+    print("Meta response:", response.status_code, response.text)
+
+
+@app.route("/webhook", methods=["GET", "POST"])
+def webhook():
+
+    # Verification
+    if request.method == "GET":
+        mode = request.args.get("hub.mode")
+        token = request.args.get("hub.verify_token")
+        challenge = request.args.get("hub.challenge")
+
+        if mode == "subscribe" and token == VERIFY_TOKEN:
+            return challenge, 200
+        return "Verification failed", 403
+
+    # Incoming message
+    if request.method == "POST":
+        data = request.json
+        print("Incoming:", data)
+
+        try:
+            message = data["entry"][0]["changes"][0]["value"]["messages"][0]
+            sender = message["from"]
+            text = message["text"]["body"]
+
+            build = get_build(text)
+
+            if build:
+                send_message(
+                    sender,
+                    f"{build['caption']}\n\nCode: {build['code']}",
+                    build["image"]
+                )
+            else:
+                send_message(sender, "Build not found.\nTry: !mp m13 -snd")
+
+        except Exception as e:
+            print("Error:", e)
+
+        return jsonify({"status": "ok"}), 200
+
+
 @app.route("/")
 def home():
-    return "CODM Bot Running"
-
-@app.route('/images/<filename>')
-def serve_image(filename):
-    return send_from_directory('images', filename)
-
-# Webhook verification (Meta checks this)
-@app.route('/webhook', methods=['GET'])
-def verify():
-    token = request.args.get("hub.verify_token")
-    challenge = request.args.get("hub.challenge")
-    if token == VERIFY_TOKEN:
-        return challenge
-    return "Verification failed", 403
-
-# Receive messages
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    data = request.get_json()
-
-    try:
-        message = data['entry'][0]['changes'][0]['value']['messages'][0]
-        sender = message['from']
-        text = message['text']['body'].lower()
-
-        if text.startswith("!"):
-            gun = text[1:]
-
-            if gun in builds:
-                share_code = builds[gun]['share_code']
-                image_file = builds[gun]['image']
-
-                send_text(sender, f"🔥 {gun.upper()} BUILD 🔥\n\nImport Code:\n{share_code}")
-
-                image_url = f"{request.host_url}images/{image_file}"
-                send_image(sender, image_url)
-            else:
-                send_text(sender, "Gun not found.")
-
-    except Exception as e:
-        print("Error:", e)
-
-    return jsonify({"status": "ok"})
-
-
-def send_text(to, message):
-    url = f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages"
-    headers = {
-        "Authorization": f"Bearer {ACCESS_TOKEN}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "messaging_product": "whatsapp",
-        "to": to,
-        "type": "text",
-        "text": {"body": message}
-    }
-    requests.post(url, headers=headers, json=data)
-
-
-def send_image(to, image_url):
-    url = f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages"
-    headers = {
-        "Authorization": f"Bearer {ACCESS_TOKEN}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "messaging_product": "whatsapp",
-        "to": to,
-        "type": "image",
-        "image": {"link": image_url}
-    }
-    requests.post(url, headers=headers, json=data)
+    return "CODM Loadout Bot Running 🚀", 200
 
 
 if __name__ == "__main__":
-    app.run()
+    import os
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
