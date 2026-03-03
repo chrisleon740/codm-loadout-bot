@@ -8,6 +8,10 @@ load_dotenv()
 
 app = Flask(__name__)
 
+@app.route("/")
+def home():
+    return "CODM Loadout Bot Running 🚀", 200
+
 VERIFY_TOKEN = os.getenv("codm")
 WHATSAPP_TOKEN = os.getenv("EAAUXehsXecQBQ2ejYALhVE5SpZCSvo02JOnKs9ktbm7zgzFB7PbdVwuzlOi5DZBLITRtvQLNJ7RQDjrZAoSioJIDkDZBZBYIT8JbkIrnG4oxbwWrOFLKBYwMB3ssIr49SEd2OcZBYZAydjmzKoTUZBKHdB4ZCHmfZCh3FCnauYMX2ufcYkBLKasZA3F6luCfv3uDAwUPMpoZBgcu8OPQAVZCVCUBZBJfPrmYe6ZBo47sfRbuaznxQHbdW8H5EoAmFiHb6A1h8ldwZCalZARfoVwp5Ktv2q1n6")
 PHONE_NUMBER_ID = os.getenv("1022800870913487")
@@ -108,7 +112,7 @@ def home():
     return "CODM Loadout Bot Running 🚀", 200
 
 
-if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    if __name__ == "__main__":
+        import os
+        port = int(os.environ.get("PORT", 8080))
+        app.run(host="0.0.0.0", port=port)
