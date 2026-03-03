@@ -8,19 +8,21 @@ load_dotenv()
 
 app = Flask(__name__)
 
+# ---- ENV VARIABLES ----
+VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
+WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
+PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
+
+# ---- ROOT ROUTE (Railway health check) ----
 @app.route("/")
 def home():
     return "CODM Loadout Bot Running 🚀", 200
 
-VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
-WHATSAPP_TOKEN = os.getenv("EAAUXehsXecQBQ2ejYALhVE5SpZCSvo02JOnKs9ktbm7zgzFB7PbdVwuzlOi5DZBLITRtvQLNJ7RQDjrZAoSioJIDkDZBZBYIT8JbkIrnG4oxbwWrOFLKBYwMB3ssIr49SEd2OcZBYZAydjmzKoTUZBKHdB4ZCHmfZCh3FCnauYMX2ufcYkBLKasZA3F6luCfv3uDAwUPMpoZBgcu8OPQAVZCVCUBZBJfPrmYe6ZBo47sfRbuaznxQHbdW8H5EoAmFiHb6A1h8ldwZCalZARfoVwp5Ktv2q1n6")
-PHONE_NUMBER_ID = os.getenv("1022800870913487")
-
-# Load build database
+# ---- LOAD BUILDS DATABASE ----
 with open("builds.json") as f:
     builds = json.load(f)
 
-
+# ---- BUILD PARSER ----
 def get_build(command):
     try:
         parts = command.lower().split()
@@ -36,7 +38,7 @@ def get_build(command):
     except:
         return None
 
-
+# ---- SEND MESSAGE TO WHATSAPP ----
 def send_message(to, text, image_url=None):
     url = f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages"
 
@@ -66,11 +68,11 @@ def send_message(to, text, image_url=None):
     response = requests.post(url, headers=headers, json=data)
     print("Meta response:", response.status_code, response.text)
 
-
+# ---- WEBHOOK ----
 @app.route("/webhook", methods=["GET", "POST"])
 def webhook():
 
-    # Verification
+    # Meta verification
     if request.method == "GET":
         mode = request.args.get("hub.mode")
         token = request.args.get("hub.verify_token")
@@ -99,20 +101,11 @@ def webhook():
                     build["image"]
                 )
             else:
-                send_message(sender, "Build not found.\nTry: !mp m13 -snd")
+                send_message(sender, "Build not found.\nTry: !mp m13 -respawn")
 
         except Exception as e:
             print("Error:", e)
 
         return jsonify({"status": "ok"}), 200
 
-
-@app.route("/")
-def home():
-    return "CODM Loadout Bot Running 🚀", 200
-
-
-    if __name__ == "__main__":
-        import os
-        port = int(os.environ.get("PORT", 8080))
-        app.run(host="0.0.0.0", port=port)
+# ---- SERVER START ----
